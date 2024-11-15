@@ -14,7 +14,7 @@ typedef struct Mail
 typedef struct MailBox
 {
     int mail_num;//当前邮箱未读邮件数量
-    int rec_index;//第一封未读邮件偏移量
+    int rec_index;//第一封未读邮件偏移量,无邮件时为-1
     int snd_index;//下一封邮件写入的偏移量
     struct Mail mails[MAIL_MAX_NUM];
 };

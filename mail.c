@@ -39,10 +39,17 @@ int send_mail(pid_t pid, struct Mail* mail)
     }
 
     memcpy(&rec_mailbox->mails[rec_mailbox->snd_index], mail, sizeof(*mail));//将邮件写入对应位置
+
     rec_mailbox->mail_num++;//未读邮件+1
-    rec_mailbox->rec_index ++;
-    if(rec_mailbox->rec_index > MAIL_MAX_NUM)
-        rec_mailbox->rec_index -= MAIL_MAX_NUM;
+
+
+    if(rec_mailbox->rec_index == -1)//初始情况
+        rec_mailbox->rec_index = rec_mailbox->snd_index;
+
+    rec_mailbox->snd_index++;//写入位置+1
+    if(rec_mailbox->snd_index == MAIL_MAX_NUM)
+        rec_mailbox->snd_index = 0;
+
     printf("发送成功\n");
     return 0;
 }
@@ -53,10 +60,37 @@ int receive_mail()
 
 }
 
+//撤销最近发送的一封邮件
 //撤销成功返回1,失败返回-1
-int quash_mail()
+int quash_mail(pid_t pid)
 {
+    //通过接收进程pid 获取接收进程的邮箱地址
+    key_t shmkey = get_shmkey(pid);//utils
+    int shmid = get_shmid(shmkey,(size_t)sizeof(struct MailBox));//utils
+    if(shmid == -1)
+    {
+        printf("目标邮箱不存在");
+        return -1;
+    }
+    struct MailBox* rec_mailbox = (struct MailBox*)get_mailbox(shmid);//utils
+    if(rec_mailbox->mail_num == 0)
+    {
+        printf("对方邮箱为空\n");
+        return -1;
+    }
 
+    memset(&rec_mailbox->mails[rec_mailbox->snd_index], 0, sizeof(struct Mail));//将邮件对应位置写空
+
+    rec_mailbox->mail_num --;//未读邮件-1
+    if(rec_mailbox->mail_num == 0)
+        rec_mailbox->rec_index = -1;
+
+    rec_mailbox->snd_index --;//写入位置-1
+    if(rec_mailbox->snd_index == -1)
+        rec_mailbox->snd_index = MAIL_MAX_NUM-1;
+
+    printf("撤销成功\n");
+    return 0;
 }
 
 //销毁成功返回1,失败返回-1

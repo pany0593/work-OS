@@ -17,5 +17,6 @@ int main()
     memcpy(mail->message,message,sizeof(message));
 
     send_mail(rec_pid, mail);
+    quash_mail(rec_pid);
     return 0;
 }
