@@ -18,5 +18,6 @@ int main()
 
     send_mail(rec_pid, mail);
     quash_mail(rec_pid);
+    delete_mailbox();
     return 0;
 }

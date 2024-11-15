@@ -5,7 +5,7 @@ int create_mailbox()
 {
     key_t shmkey = get_shmkey(getpid());//utils
     int shmid = get_shmid(shmkey,(size_t)sizeof(struct MailBox));//utils
-    printf("进程shmid = %d\n", shmid);
+//    printf("进程shmid = %d\n", shmid);
     void *mailbox_addr = get_mailbox(shmid);//utils
     //初始化mailbox信息
     struct MailBox mailbox = {0, -1, 1};
@@ -94,7 +94,17 @@ int quash_mail(pid_t pid)
 }
 
 //销毁成功返回1,失败返回-1
-int delete_mail_box()
+int delete_mailbox()
 {
-
+    key_t shmkey = get_shmkey(getpid());//utils
+    int shmid = get_shmid(shmkey,(size_t)sizeof(struct MailBox));//utils
+//    printf("进程shmid = %d\n", shmid);
+    void *mailbox_addr = get_mailbox(shmid);//utils
+    shmdt(mailbox_addr);
+    if(shmctl(shmid, IPC_RMID, NULL) == -1) {
+        perror("shmctl failed");
+        return -1;
+    }
+    printf("销毁成功\n");
+    return 1;
 }
