@@ -18,15 +18,15 @@ int get_shmid(key_t shmkey,size_t size)
     //创建共享内存shm,返回shm标识符sid
     if((shmid = shmget(shmkey, size, IPC_CREAT|0666)) == -1){
         perror("shm call failed!\n");
-        exit(1);
+        return -1;
     }
-    return shmkey;
+    return shmid;
 }
 
 void* get_mailbox(int shmid)
 {
-    void *mailbox_addr;
-    if((mailbox_addr = shmat(shmid, (char*)0, 0)) == (char *)-1)
+    void *mailbox_addr = shmat(shmid, (char*)0, 0);
+    if(mailbox_addr == (void *)-1)
     {
         perror("attch shared memory error!\n");
         exit(1);
