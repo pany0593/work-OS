@@ -1,5 +1,84 @@
 #include "utils.h"
 
+union semun
+{
+    int val;
+    struct semid_ds *buf;
+    unsigned short *array;
+}sem_union;
+
+int get_semaphore(key_t key)
+{
+    int semid = semget(key, 1, IPC_CREAT | 0666);
+    if (semid == -1) {
+        perror("semget failed");
+        return -1;
+    }
+    return semid;
+}
+
+int init_semaphore(key_t key)
+{
+    int semid = get_semaphore(key);
+    if (semid == -1)
+    {
+        printf("get_semaphore erorr\n");
+        return -1;
+    }
+    // 设置信号量初始值为 1（表示互斥锁）
+    sem_union.val = 1;
+    if (semctl(semid, 0, SETVAL, sem_union) == -1) {
+        perror("操作失败");
+        return -1;
+    }
+    return 0;
+}
+
+// P操作 (等待信号量)
+int P_operation(key_t shmkey)
+{
+    int semid = get_semaphore(shmkey);
+    if (semid == -1)
+    {
+        printf("get_semaphore erorr\n");
+        return -1;
+    }
+
+    struct sembuf sop;
+    sop.sem_num = 0; // 操作第0号信号量
+    sop.sem_op = -1; // P操作，信号量减1
+    sop.sem_flg = 0;
+
+    if (semop(semid, &sop, 1) == -1) {
+        perror("操作P失败");
+        return -1;
+    }
+    return 1;
+}
+
+// V操作 (释放信号量)
+int V_operation(key_t shmkey)
+{
+    int semid = get_semaphore(shmkey);
+    if (semid == -1)
+    {
+        printf("get_semaphore erorr\n");
+        return -1;
+    }
+
+    struct sembuf sop;
+    sop.sem_num = 0; // 操作第0号信号量
+    sop.sem_op = 1;  // V操作，信号量加1
+    sop.sem_flg = 0;
+
+    if (semop(semid, &sop, 1) == -1) {
+        perror("操作V失败");
+        return -1;
+    }
+    return 0;
+}
+
+
 key_t get_shmkey(pid_t pid)
 {
     key_t shmkey;

@@ -11,6 +11,9 @@ int create_mailbox()
     struct MailBox mailbox = {0, -1, 1};
     //mailbox写入共享内存首地址
     memcpy(mailbox_addr, &mailbox, sizeof(mailbox));
+
+    init_semaphore(shmkey);
+
     return 1;
 }
 
@@ -19,7 +22,7 @@ int send_mail(pid_t pid, struct Mail* mail)
 {
     if(sizeof(*mail) > 1024)
     {
-        printf("邮件过大:%llu\n",sizeof(*mail));
+        printf("邮件过大:%d\n",(int)sizeof(*mail));
         return -1;
     }
 
@@ -38,10 +41,11 @@ int send_mail(pid_t pid, struct Mail* mail)
         return -1;
     }
 
+    P_operation(shmkey);
+
     memcpy(&rec_mailbox->mails[rec_mailbox->snd_index], mail, sizeof(*mail));//将邮件写入对应位置
 
     rec_mailbox->mail_num++;//未读邮件+1
-
 
     if(rec_mailbox->rec_index == -1)//初始情况
         rec_mailbox->rec_index = rec_mailbox->snd_index;
@@ -51,6 +55,9 @@ int send_mail(pid_t pid, struct Mail* mail)
         rec_mailbox->snd_index = 0;
 
     printf("发送成功\n");
+
+    V_operation(shmkey);
+
     return 0;
 }
 
@@ -74,11 +81,16 @@ int receive_mail()
         return -1;
     }
 
+    P_operation(shmkey);
+
     // 获取当前接收到的邮件，按接收索引读取邮件
     struct Mail *mail = malloc(sizeof(struct Mail));
     memcpy(mail, &mailbox->mails[mailbox->rec_index], sizeof(struct Mail));
 
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf("sender:%d\n",(int)mail->sender_pid);
     printf("message:%s\n",mail->message);
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
     mailbox->rec_index++;
 
@@ -92,6 +104,9 @@ int receive_mail()
         mailbox->rec_index = -1;
 
     printf("接收邮件成功\n");
+
+    V_operation(shmkey);
+
     return 1;
 }
 
@@ -115,6 +130,8 @@ int quash_mail(pid_t pid)
         return -1;
     }
 
+    P_operation(shmkey);
+
     memset(&rec_mailbox->mails[rec_mailbox->snd_index], 0, sizeof(struct Mail));//将邮件对应位置写空
 
     rec_mailbox->mail_num --;//未读邮件-1
@@ -126,6 +143,9 @@ int quash_mail(pid_t pid)
         rec_mailbox->snd_index = MAIL_MAX_NUM-1;
 
     printf("撤销成功\n");
+
+    V_operation(shmkey);
+
     return 0;
 }
 
@@ -143,4 +163,19 @@ int delete_mailbox()
     }
     printf("销毁成功\n");
     return 1;
+}
+
+//返回当前未读邮件
+int query_mailbox()
+{
+    key_t shmkey = get_shmkey(getpid()); // utils
+    int shmid = get_shmid(shmkey, (size_t)sizeof(struct MailBox)); // utils
+    if(shmid == -1)
+    {
+        printf("邮箱不存在");
+        return -1; // 如果共享内存ID无效，说明邮箱不存在
+    }
+    // 获取当前进程的邮箱地址（共享内存中的邮箱结构体）
+    struct MailBox* mailbox = (struct MailBox*)get_mailbox(shmid); // utils
+    return mailbox->mail_num;
 }
